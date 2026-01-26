@@ -51,6 +51,17 @@ func fields(decl: StructDeclSyntax) -> [Field] {
     }
 }
 
+func validModifiers(decl: StructDeclSyntax) -> String {
+    var modifiers: [String] = []
+    for modifier in decl.modifiers {
+        let modifierString = "\(modifier.trimmed)"
+        if ["public", "private", "internal", "protected", "package"].contains(modifierString) {
+            modifiers.append(modifierString)
+        }
+    }
+    return modifiers.joined(separator: " ")
+}
+
 enum IsOptional {
     case required
     case optional(TypeSyntax)
@@ -64,7 +75,7 @@ enum IsOptional {
     }
 }
 
-func initFrom(from fields: [Field]) -> DeclSyntax {
+func initFrom(from fields: [Field], modifier: String) -> DeclSyntax {
     let arguments = fields.map { field in
         if let defaultValue = field.defaultValue {
             switch IsOptional.match(field.type) {
@@ -82,7 +93,7 @@ func initFrom(from fields: [Field]) -> DeclSyntax {
         "self.\(field.identifier) = \(field.identifier)"
     }.joined(separator: "\n")
     return DeclSyntax(stringLiteral: """
-        init(\(arguments)) {
+        \(modifier) init(\(arguments)) {
             \(assignments)
         }
     """)
@@ -100,7 +111,8 @@ public struct DefaultInitMacro: MemberMacro {
             return requireStruct(declaration: declaration, context: context)
         }
         let fields = fields(decl: structDecl)
-        let initializer = initFrom(from: fields)
+        let modifiers = validModifiers(decl: structDecl)
+        let initializer = initFrom(from: fields, modifier: modifiers)
         return [initializer]
     }
 }
